@@ -2,6 +2,7 @@
 
 # Variables
 BINARY_NAME=toucan
+DOCKER_IMAGE=toucan
 GO_CMD=go
 PNPM_CMD=pnpm
 UI_DIR=ui
@@ -24,6 +25,8 @@ help:
 	@echo "  make clean           - Remove build artifacts"
 	@echo "  make run-backend     - Run only the backend"
 	@echo "  make run-frontend    - Run only the frontend"
+	@echo "  make docker-build    - Build production Docker image (including frontend)"
+	@echo "  make docker-headless - Build headless Docker image (API only)"
 
 # Install dependencies
 .PHONY: install
@@ -50,7 +53,7 @@ build-backend:
 .PHONY: build-frontend
 build-frontend:
 	@echo "Building frontend..."
-	cd $(UI_DIR) && $(PNPM_CMD) run build
+	cd $(UI_DIR) && $(PNPM_CMD) install && $(PNPM_CMD) run build --outDir ../public
 
 # Run targets
 .PHONY: run-backend
@@ -111,3 +114,15 @@ clean:
 	@echo "Cleaning up..."
 	rm -rf $(BIN_DIR)
 	rm -rf $(UI_DIR)/dist
+	rm -rf public/
+
+# Docker build targets
+.PHONY: docker-build
+docker-build:
+	@echo "Building production Docker image..."
+	docker build --build-arg HEADLESS=false -t $(DOCKER_IMAGE) .
+
+.PHONY: docker-headless
+docker-headless:
+	@echo "Building headless Docker image..."
+	docker build --build-arg HEADLESS=true -t $(DOCKER_IMAGE):headless .
