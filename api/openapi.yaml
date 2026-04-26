@@ -1,0 +1,657 @@
+openapi: 3.0.3
+info:
+  title: Toucan LMS API
+  description: API for the Toucan Learning Management System
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: v1 API server
+tags:
+  - name: Courses
+    description: Course catalog and management
+  - name: Sections
+    description: Course structure and module management
+  - name: Content
+    description: Educational content items (videos, PDFs, etc.)
+  - name: Uploads
+    description: File upload and download utilities
+  - name: System
+    description: System health and utilities
+paths:
+  /healthz:
+    get:
+      tags:
+        - System
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /uploads/presign:
+    post:
+      tags:
+        - Uploads
+      summary: Generate a presigned URL for upload or download
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresignRequest'
+      responses:
+        '200':
+          description: Presigned URL generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresignResponse'
+  /uploads:
+    post:
+      tags:
+        - Uploads
+      summary: Upload a file (multipart/form-data)
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                key:
+                  type: string
+                  description: Optional key/filename for the storage
+      responses:
+        '201':
+          description: File uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    type: string
+  /uploads/{key}:
+    get:
+      tags:
+        - Uploads
+      summary: Download a file
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found
+  /courses:
+    get:
+      tags:
+        - Courses
+      summary: List courses
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/CourseStatus'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of courses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseListResult'
+    post:
+      tags:
+        - Courses
+      summary: Create a course
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCourseInput'
+      responses:
+        '201':
+          description: Course created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+  /courses/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Courses
+      summary: Get a course by ID
+      responses:
+        '200':
+          description: Course details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '404':
+          description: Course not found
+    put:
+      tags:
+        - Courses
+      summary: Update a course
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCourseInput'
+      responses:
+        '200':
+          description: Course updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '404':
+          description: Course not found
+    delete:
+      tags:
+        - Courses
+      summary: Delete a course
+      responses:
+        '204':
+          description: Course deleted
+        '404':
+          description: Course not found
+  /courses/{id}/publish:
+    post:
+      tags:
+        - Courses
+      summary: Publish a course
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Course published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '404':
+          description: Course not found
+  /courses/{id}/archive:
+    post:
+      tags:
+        - Courses
+      summary: Archive a course
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Course archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '404':
+          description: Course not found
+  /sections:
+    get:
+      tags:
+        - Sections
+      summary: List sections
+      parameters:
+        - name: course_id
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of sections
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SectionListResult'
+    post:
+      tags:
+        - Sections
+      summary: Create a section
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSectionInput'
+      responses:
+        '201':
+          description: Section created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Section'
+  /sections/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Sections
+      summary: Get a section by ID
+      responses:
+        '200':
+          description: Section details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Section'
+        '404':
+          description: Section not found
+    put:
+      tags:
+        - Sections
+      summary: Update a section
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSectionInput'
+      responses:
+        '200':
+          description: Section updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Section'
+        '404':
+          description: Section not found
+    delete:
+      tags:
+        - Sections
+      summary: Delete a section
+      responses:
+        '204':
+          description: Section deleted
+        '404':
+          description: Section not found
+  /content:
+    get:
+      tags:
+        - Content
+      summary: List content items
+      parameters:
+        - name: section_id
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of content items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentListResult'
+    post:
+      tags:
+        - Content
+      summary: Create a content item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateItemInput'
+      responses:
+        '201':
+          description: Content item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+  /content/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Content
+      summary: Get a content item by ID
+      responses:
+        '200':
+          description: Content item details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+        '404':
+          description: Content item not found
+    put:
+      tags:
+        - Content
+      summary: Update a content item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateItemInput'
+      responses:
+        '200':
+          description: Content item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+        '404':
+          description: Content item not found
+    delete:
+      tags:
+        - Content
+      summary: Delete a content item
+      responses:
+        '204':
+          description: Content item deleted
+        '404':
+          description: Content item not found
+components:
+  schemas:
+    CourseStatus:
+      type: string
+      enum: [draft, published, archived]
+    CourseLevel:
+      type: string
+      enum: [beginner, intermediate, advanced]
+    ContentType:
+      type: string
+      enum: [video, pdf, rich_text, file, link, embed]
+    Course:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        slug:
+          type: string
+        summary:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        level:
+          $ref: '#/components/schemas/CourseLevel'
+        tags:
+          type: array
+          items:
+            type: string
+        status:
+          $ref: '#/components/schemas/CourseStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        published_at:
+          type: string
+          format: date-time
+    CreateCourseInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        summary:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        level:
+          $ref: '#/components/schemas/CourseLevel'
+        tags:
+          type: array
+          items:
+            type: string
+    UpdateCourseInput:
+      type: object
+      properties:
+        title:
+          type: string
+        summary:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        level:
+          $ref: '#/components/schemas/CourseLevel'
+        tags:
+          type: array
+          items:
+            type: string
+    CourseListResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Course'
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+    Section:
+      type: object
+      properties:
+        id:
+          type: string
+        course_id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        position:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CreateSectionInput:
+      type: object
+      required: [course_id, title]
+      properties:
+        course_id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        position:
+          type: integer
+    UpdateSectionInput:
+      type: object
+      properties:
+        title:
+          type: string
+        summary:
+          type: string
+        position:
+          type: integer
+    SectionListResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Section'
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+    ContentItem:
+      type: object
+      properties:
+        id:
+          type: string
+        section_id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        type:
+          $ref: '#/components/schemas/ContentType'
+        position:
+          type: integer
+        source_url:
+          type: string
+        body:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CreateItemInput:
+      type: object
+      required: [section_id, title, type]
+      properties:
+        section_id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        type:
+          $ref: '#/components/schemas/ContentType'
+        position:
+          type: integer
+        source_url:
+          type: string
+        body:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+    UpdateItemInput:
+      type: object
+      properties:
+        title:
+          type: string
+        summary:
+          type: string
+        type:
+          $ref: '#/components/schemas/ContentType'
+        position:
+          type: integer
+        source_url:
+          type: string
+        body:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+    ContentListResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentItem'
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+    PresignRequest:
+      type: object
+      required: [key, operation]
+      properties:
+        key:
+          type: string
+        operation:
+          type: string
+          enum: [upload, download]
+        expires_in:
+          type: integer
+          description: Expiration time in seconds
+    PresignResponse:
+      type: object
+      properties:
+        url:
+          type: string
+        key:
+          type: string
