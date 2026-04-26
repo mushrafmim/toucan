@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -99,9 +100,9 @@ func buildHandler(
 	requireAuth := auth.Middleware
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /", courseHandler.HandleRoot)
 	mux.HandleFunc("GET /healthz", courseHandler.HandleHealth)
 
+	// API routes
 	mux.Handle("GET /api/v1/courses", requireAuth(http.HandlerFunc(courseHandler.HandleListCourses)))
 	mux.Handle("POST /api/v1/courses", requireAuth(http.HandlerFunc(courseHandler.HandleCreateCourse)))
 	mux.Handle("GET /api/v1/courses/{id}", requireAuth(http.HandlerFunc(courseHandler.HandleGetCourse)))
@@ -125,6 +126,19 @@ func buildHandler(
 	mux.Handle("POST /api/v1/uploads/presign", requireAuth(http.HandlerFunc(uploadHandler.HandlePresign)))
 	mux.Handle("POST /api/v1/uploads", requireAuth(http.HandlerFunc(uploadHandler.HandleUpload)))
 	mux.Handle("GET /api/v1/uploads/{key}", requireAuth(http.HandlerFunc(uploadHandler.HandleDownload)))
+
+	// Serve static files from public/ folder (build output of frontend)
+	fs := http.FileServer(http.Dir("public"))
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// If the request is for an API or appears to be a static asset with an extension,
+		// let the FileServer handle it.
+		if strings.HasPrefix(r.URL.Path, "/api/") || strings.Contains(r.URL.Path, ".") {
+			fs.ServeHTTP(w, r)
+			return
+		}
+		// Otherwise, fallback to index.html to support SPA client-side routing.
+		http.ServeFile(w, r, "public/index.html")
+	}))
 
 	return courseHandler.LoggingMiddleware(mux)
 }

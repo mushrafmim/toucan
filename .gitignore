@@ -1,1 +1,4 @@
 .env
+
+# ignore static files
+/public/
