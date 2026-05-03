@@ -18,6 +18,7 @@ import (
 	"toucan/internal/seed"
 	"toucan/internal/storage"
 	"toucan/internal/uploads"
+	"toucan/internal/users"
 )
 
 type App struct {
@@ -54,13 +55,15 @@ func New(dbCfg database.Config, storageCfg storage.Config, seedCfg seed.Config, 
 	sectionService := sections.NewService(sectionRepo, courseService)
 	contentRepo := content.NewRepository(db)
 	contentService := content.NewService(contentRepo, sectionService)
+	userRepo := users.NewRepository(db)
+	userService := users.NewService(userRepo)
 
 	if seedCfg.DemoData {
 		seed.Demo(courseService, sectionService, contentService)
 	}
 
 	return &App{
-		Handler: buildHandler(logger, courseService, sectionService, contentService, store, auth),
+		Handler: buildHandler(logger, courseService, sectionService, contentService, userService, store, auth),
 		Close:   db.Close,
 	}, nil
 }
@@ -90,12 +93,14 @@ func buildHandler(
 	courseService *courses.Service,
 	sectionService *sections.Service,
 	contentService *content.Service,
+	userService users.Service,
 	store storage.Store,
 	auth *identity.Authenticator,
 ) http.Handler {
 	courseHandler := courses.NewHandler(courseService, logger)
 	sectionHandler := sections.NewHandler(sectionService)
 	contentHandler := content.NewHandler(contentService)
+	userHandler := users.NewHandler(userService)
 	uploadHandler := uploads.NewHandler(store)
 	requireAuth := auth.Middleware
 
@@ -122,6 +127,10 @@ func buildHandler(
 	mux.Handle("GET /api/v1/content/{id}", requireAuth(http.HandlerFunc(contentHandler.HandleGetContent)))
 	mux.Handle("PUT /api/v1/content/{id}", requireAuth(http.HandlerFunc(contentHandler.HandleUpdateContent)))
 	mux.Handle("DELETE /api/v1/content/{id}", requireAuth(http.HandlerFunc(contentHandler.HandleDeleteContent)))
+
+	mux.Handle("GET /api/v1/users", requireAuth(http.HandlerFunc(userHandler.HandleListUsers)))
+	mux.Handle("POST /api/v1/users", requireAuth(http.HandlerFunc(userHandler.HandleCreateUser)))
+	mux.Handle("GET /api/v1/users/{id}", requireAuth(http.HandlerFunc(userHandler.HandleGetUser)))
 
 	mux.Handle("POST /api/v1/uploads/presign", requireAuth(http.HandlerFunc(uploadHandler.HandlePresign)))
 	mux.Handle("POST /api/v1/uploads", requireAuth(http.HandlerFunc(uploadHandler.HandleUpload)))

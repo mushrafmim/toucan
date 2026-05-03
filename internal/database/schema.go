@@ -49,9 +49,21 @@ func EnsureSchema(db *sql.DB) error {
 			updated_at TIMESTAMPTZ NOT NULL
 		)
 		`,
+		`
+		CREATE TABLE IF NOT EXISTS users (
+			id TEXT PRIMARY KEY,
+			external_subject TEXT NOT NULL UNIQUE,
+			email TEXT NOT NULL,
+			display_name TEXT NOT NULL,
+			roles JSONB NOT NULL DEFAULT '[]'::jsonb,
+			created_at TIMESTAMPTZ NOT NULL,
+			updated_at TIMESTAMPTZ NOT NULL
+		)
+		`,
 		`CREATE INDEX IF NOT EXISTS idx_courses_status_created_at ON courses(status, created_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_sections_course_id_position ON sections(course_id, position, created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_content_items_section_id_position ON content_items(section_id, position, created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_users_external_subject ON users(external_subject)`,
 	}
 
 	for _, statement := range statements {

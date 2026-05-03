@@ -8,6 +8,8 @@ import { CourseDetailPage } from '@/features/courses/pages/course-detail-page'
 import { CoursesPage } from '@/features/courses/pages/courses-page'
 import { DashboardPage } from '@/features/dashboard/pages/dashboard-page'
 import { SectionsPage } from '@/features/sections/pages/sections-page'
+import { fetchUsers } from '@/features/users/api/users-api'
+import { UsersPage } from '@/features/users/pages/users-page'
 
 export const router = createBrowserRouter([
   {
@@ -41,6 +43,11 @@ export const router = createBrowserRouter([
       {
         path: 'content',
         element: <ContentPage />,
+      },
+      {
+        path: 'users',
+        element: <UsersPage />,
+        loader: () => fetchUsers(),
       },
       {
         path: 'courses/:courseId/content/:contentId',
