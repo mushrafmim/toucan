@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"toucan/internal/shared"
 )
 
 type Type string
@@ -58,12 +60,7 @@ type ListFilter struct {
 	PageSize  int
 }
 
-type ListResult struct {
-	Items    []Item `json:"items"`
-	Page     int    `json:"page"`
-	PageSize int    `json:"page_size"`
-	Total    int    `json:"total"`
-}
+type ListResult = shared.ListResult[Item]
 
 var (
 	ErrNotFound    = errors.New("content item not found")
