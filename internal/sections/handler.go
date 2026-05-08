@@ -19,7 +19,7 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) HandleListSections(w http.ResponseWriter, r *http.Request) {
-	result, err := h.service.List(ListFilter{
+	result, err := h.service.List(r.Context(), ListFilter{
 		CourseID: r.URL.Query().Get("course_id"),
 		Page:     parseInt(r.URL.Query().Get("page"), 1),
 		PageSize: parseInt(r.URL.Query().Get("page_size"), 10),
@@ -32,7 +32,7 @@ func (h *Handler) HandleListSections(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) HandleGetSection(w http.ResponseWriter, r *http.Request) {
-	section, err := h.service.Get(r.PathValue("id"))
+	section, err := h.service.Get(r.Context(), r.PathValue("id"))
 	if err != nil {
 		writeError(w, err)
 		return
@@ -47,7 +47,7 @@ func (h *Handler) HandleCreateSection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	section, err := h.service.Create(input)
+	section, err := h.service.Create(r.Context(), input)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -62,7 +62,7 @@ func (h *Handler) HandleUpdateSection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	section, err := h.service.Update(r.PathValue("id"), input)
+	section, err := h.service.Update(r.Context(), r.PathValue("id"), input)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -71,7 +71,7 @@ func (h *Handler) HandleUpdateSection(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) HandleDeleteSection(w http.ResponseWriter, r *http.Request) {
-	if err := h.service.Delete(r.PathValue("id")); err != nil {
+	if err := h.service.Delete(r.Context(), r.PathValue("id")); err != nil {
 		writeError(w, err)
 		return
 	}

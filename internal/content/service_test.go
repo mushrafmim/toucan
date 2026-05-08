@@ -1,51 +1,48 @@
 package content
 
 import (
+	"context"
 	"testing"
 
-	"toucan/internal/courses"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"toucan/internal/sections"
 )
 
-func TestServiceManagesContentItems(t *testing.T) {
-	courseService := courses.NewService(courses.NewMemoryRepository())
-	sectionService := sections.NewService(sections.NewMemoryRepository(), courseService)
-	service := NewService(NewMemoryRepository(), sectionService)
+type mockSectionLookup struct {
+	mock.Mock
+}
 
-	course, err := courseService.Create(courses.CreateCourseInput{
-		Title:       "Platform Onboarding",
-		Summary:     "Everything a new learner needs first.",
-		Description: "Covers setup, navigation, and delivery expectations.",
-	})
-	if err != nil {
-		t.Fatalf("create course: %v", err)
-	}
-	section, err := sectionService.Create(sections.CreateSectionInput{
-		CourseID: course.ID,
-		Title:    "Week 1",
-		Summary:  "Orientation materials.",
-		Position: 1,
-	})
-	if err != nil {
-		t.Fatalf("create section: %v", err)
-	}
+func (m *mockSectionLookup) Get(ctx context.Context, id string) (sections.Section, error) {
+	args := m.Called(ctx, id)
+	return args.Get(0).(sections.Section), args.Error(1)
+}
 
-	item, err := service.Create(CreateItemInput{
-		SectionID: section.ID,
+func TestServiceCreateContentItem(t *testing.T) {
+	mockRepo := new(MockRepository)
+	mockSections := new(mockSectionLookup)
+	service := NewService(mockRepo, mockSections)
+
+	sectionID := "sec-123"
+	ctx := context.Background()
+
+	mockSections.On("Get", ctx, sectionID).Return(sections.Section{ID: sectionID}, nil)
+	mockRepo.On("Create", mock.AnythingOfType("content.Item")).Return(func(item Item) Item {
+		item.ID = "content-1"
+		return item
+	}, nil)
+
+	item, err := service.Create(ctx, CreateItemInput{
+		SectionID: sectionID,
 		Title:     "Welcome Video",
 		Summary:   "Overview of the platform.",
 		Type:      TypeVideo,
 		Position:  1,
-		SourceURL: "https://cdn.example.test/welcome.mp4",
-		Metadata:  map[string]any{"duration_seconds": 180},
 	})
-	if err != nil {
-		t.Fatalf("create content item: %v", err)
-	}
-	if item.Type != TypeVideo {
-		t.Fatalf("expected content type video, got %q", item.Type)
-	}
-	if item.SectionID != section.ID {
-		t.Fatalf("expected section id %q, got %q", section.ID, item.SectionID)
-	}
+
+	assert.NoError(t, err)
+	assert.Equal(t, "content-1", item.ID)
+	assert.Equal(t, sectionID, item.SectionID)
+	mockRepo.AssertExpectations(t)
+	mockSections.AssertExpectations(t)
 }

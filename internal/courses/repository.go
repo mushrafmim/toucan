@@ -10,16 +10,49 @@ import (
 	"toucan/internal/database"
 )
 
-type Repository struct {
-	db *sql.DB
+type Repository interface {
+	List(filter ListFilter) ListResult
+	Get(id string) (Course, error)
+	Create(course Course) (Course, error)
+	Update(course Course) (Course, error)
+	Delete(id string) error
+	DB() *sql.DB
+	WithTx(tx *sql.Tx) Repository
 }
 
-func NewRepository(db *sql.DB) *Repository {
-	return &Repository{db: db}
+type DBOrTx interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	PrepareContext(context.Context, string) (*sql.Stmt, error)
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
-func (r *Repository) List(filter ListFilter) ListResult {
-	page := max(filter.Page, 1)
+type concreteRepository struct {
+	db   DBOrTx
+	conn *sql.DB
+}
+
+func NewRepository(db *sql.DB) Repository {
+	return &concreteRepository{db: db, conn: db}
+}
+
+func (r *concreteRepository) DB() *sql.DB {
+	return r.conn
+}
+
+func (r *concreteRepository) WithTx(tx *sql.Tx) Repository {
+	if tx == nil {
+		return r
+	}
+	return &concreteRepository{db: tx, conn: r.conn}
+}
+
+func (r *concreteRepository) List(filter ListFilter) ListResult {
+	page := filter.Page
+	if page <= 0 {
+		page = 1
+	}
+
 	pageSize := filter.PageSize
 	if pageSize <= 0 {
 		pageSize = 10
@@ -65,7 +98,7 @@ func (r *Repository) List(filter ListFilter) ListResult {
 
 	listArgs := append(append([]any{}, args...), pageSize, (page-1)*pageSize)
 	query := `
-		SELECT id, title, slug, summary, description, category, level, tags, status, created_at, updated_at, published_at
+		SELECT id, title, slug, summary, description, category, level, tags, status, creator_id, created_at, updated_at, published_at
 		FROM courses` + whereClause + `
 		ORDER BY created_at DESC, id ASC
 		LIMIT $` + fmt.Sprint(argIndex) + ` OFFSET $` + fmt.Sprint(argIndex+1)
@@ -93,10 +126,10 @@ func (r *Repository) List(filter ListFilter) ListResult {
 	}
 }
 
-func (r *Repository) Get(id string) (Course, error) {
+func (r *concreteRepository) Get(id string) (Course, error) {
 	row := r.db.QueryRowContext(
 		context.Background(),
-		`SELECT id, title, slug, summary, description, category, level, tags, status, created_at, updated_at, published_at
+		`SELECT id, title, slug, summary, description, category, level, tags, status, creator_id, created_at, updated_at, published_at
 		 FROM courses WHERE id = $1`,
 		id,
 	)
@@ -111,7 +144,7 @@ func (r *Repository) Get(id string) (Course, error) {
 	return course, nil
 }
 
-func (r *Repository) Create(course Course) (Course, error) {
+func (r *concreteRepository) Create(course Course) (Course, error) {
 	if course.ID == "" {
 		course.ID = database.NewID()
 	}
@@ -130,8 +163,8 @@ func (r *Repository) Create(course Course) (Course, error) {
 	_, err = r.db.ExecContext(
 		context.Background(),
 		`INSERT INTO courses (
-			id, title, slug, summary, description, category, level, tags, status, created_at, updated_at, published_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+			id, title, slug, summary, description, category, level, tags, status, creator_id, created_at, updated_at, published_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
 		course.ID,
 		course.Title,
 		course.Slug,
@@ -141,6 +174,7 @@ func (r *Repository) Create(course Course) (Course, error) {
 		string(course.Level),
 		tagsJSON,
 		string(course.Status),
+		course.CreatorID,
 		course.CreatedAt,
 		course.UpdatedAt,
 		database.NullTime(course.PublishedAt),
@@ -151,7 +185,7 @@ func (r *Repository) Create(course Course) (Course, error) {
 	return course, nil
 }
 
-func (r *Repository) Update(course Course) (Course, error) {
+func (r *concreteRepository) Update(course Course) (Course, error) {
 	course.UpdatedAt = time.Now().UTC()
 	tagsJSON, err := json.Marshal(course.Tags)
 	if err != nil {
@@ -191,7 +225,7 @@ func (r *Repository) Update(course Course) (Course, error) {
 	return course, nil
 }
 
-func (r *Repository) Delete(id string) error {
+func (r *concreteRepository) Delete(id string) error {
 	result, err := r.db.ExecContext(context.Background(), `DELETE FROM courses WHERE id = $1`, id)
 	if err != nil {
 		return err
@@ -225,6 +259,7 @@ func scanCourse(scanner courseScanner) (Course, error) {
 		&course.Level,
 		&tagsJSON,
 		&course.Status,
+		&course.CreatorID,
 		&course.CreatedAt,
 		&course.UpdatedAt,
 		&publishedAt,

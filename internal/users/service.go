@@ -14,7 +14,7 @@ func NewService(repo *Repository) Service {
 	return &service{repo: repo}
 }
 
-func (s *Service) Create(ctx context.Context, req CreateUserRequest) (User, error) {
+func (s *service) Create(ctx context.Context, req CreateUserRequest) (User, error) {
 	if strings.TrimSpace(req.ExternalSubject) == "" || strings.TrimSpace(req.Email) == "" {
 		return User{}, fmt.Errorf("external subject and email are required")
 	}

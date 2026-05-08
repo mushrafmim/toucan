@@ -8,6 +8,17 @@ import (
 func EnsureSchema(db *sql.DB) error {
 	statements := []string{
 		`
+		CREATE TABLE IF NOT EXISTS users (
+			id TEXT PRIMARY KEY,
+			external_subject TEXT NOT NULL UNIQUE,
+			email TEXT NOT NULL,
+			display_name TEXT NOT NULL,
+			roles JSONB NOT NULL DEFAULT '[]'::jsonb,
+			created_at TIMESTAMPTZ NOT NULL,
+			updated_at TIMESTAMPTZ NOT NULL
+		)
+		`,
+		`
 		CREATE TABLE IF NOT EXISTS courses (
 			id TEXT PRIMARY KEY,
 			title TEXT NOT NULL,
@@ -18,9 +29,20 @@ func EnsureSchema(db *sql.DB) error {
 			level TEXT NOT NULL,
 			tags JSONB NOT NULL DEFAULT '[]'::jsonb,
 			status TEXT NOT NULL,
+			creator_id TEXT NOT NULL REFERENCES users(id),
 			created_at TIMESTAMPTZ NOT NULL,
 			updated_at TIMESTAMPTZ NOT NULL,
 			published_at TIMESTAMPTZ NULL
+		)
+		`,
+		`
+		CREATE TABLE IF NOT EXISTS course_members (
+			course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			role TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL,
+			updated_at TIMESTAMPTZ NOT NULL,
+			PRIMARY KEY (course_id, user_id)
 		)
 		`,
 		`
@@ -45,17 +67,6 @@ func EnsureSchema(db *sql.DB) error {
 			source_url TEXT NULL,
 			body TEXT NULL,
 			metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-			created_at TIMESTAMPTZ NOT NULL,
-			updated_at TIMESTAMPTZ NOT NULL
-		)
-		`,
-		`
-		CREATE TABLE IF NOT EXISTS users (
-			id TEXT PRIMARY KEY,
-			external_subject TEXT NOT NULL UNIQUE,
-			email TEXT NOT NULL,
-			display_name TEXT NOT NULL,
-			roles JSONB NOT NULL DEFAULT '[]'::jsonb,
 			created_at TIMESTAMPTZ NOT NULL,
 			updated_at TIMESTAMPTZ NOT NULL
 		)

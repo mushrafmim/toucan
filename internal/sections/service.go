@@ -1,6 +1,7 @@
 package sections
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -9,7 +10,7 @@ import (
 )
 
 type CourseLookup interface {
-	Get(id string) (courses.Course, error)
+	Get(ctx context.Context, id string) (courses.Course, error)
 }
 
 type Service struct {
@@ -21,25 +22,25 @@ func NewService(repo *Repository, courseLookup CourseLookup) *Service {
 	return &Service{repo: repo, courseLookup: courseLookup}
 }
 
-func (s *Service) List(filter ListFilter) (ListResult, error) {
+func (s *Service) List(ctx context.Context, filter ListFilter) (ListResult, error) {
 	if filter.CourseID != "" {
-		if _, err := s.courseLookup.Get(strings.TrimSpace(filter.CourseID)); err != nil {
+		if _, err := s.courseLookup.Get(ctx, strings.TrimSpace(filter.CourseID)); err != nil {
 			return ListResult{}, err
 		}
 	}
 	return s.repo.List(filter), nil
 }
 
-func (s *Service) Get(id string) (Section, error) {
+func (s *Service) Get(ctx context.Context, id string) (Section, error) {
 	return s.repo.Get(strings.TrimSpace(id))
 }
 
-func (s *Service) Create(input CreateSectionInput) (Section, error) {
+func (s *Service) Create(ctx context.Context, input CreateSectionInput) (Section, error) {
 	if err := validateSectionInput(input); err != nil {
 		return Section{}, err
 	}
 	courseID := strings.TrimSpace(input.CourseID)
-	if _, err := s.courseLookup.Get(courseID); err != nil {
+	if _, err := s.courseLookup.Get(ctx, courseID); err != nil {
 		return Section{}, err
 	}
 
@@ -55,7 +56,7 @@ func (s *Service) Create(input CreateSectionInput) (Section, error) {
 	return s.repo.Create(section)
 }
 
-func (s *Service) Update(id string, input UpdateSectionInput) (Section, error) {
+func (s *Service) Update(ctx context.Context, id string, input UpdateSectionInput) (Section, error) {
 	if err := validateSectionUpdateInput(input); err != nil {
 		return Section{}, err
 	}
@@ -70,7 +71,7 @@ func (s *Service) Update(id string, input UpdateSectionInput) (Section, error) {
 	return s.repo.Update(section)
 }
 
-func (s *Service) Delete(id string) error {
+func (s *Service) Delete(ctx context.Context, id string) error {
 	return s.repo.Delete(strings.TrimSpace(id))
 }
 

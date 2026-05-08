@@ -2,16 +2,24 @@ package courses
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"toucan/internal/enrollments"
+	"toucan/internal/identity"
 )
 
 func TestHandlerCourseLifecycle(t *testing.T) {
-	courseHandler := NewHandler(NewService(NewMemoryRepository()), log.New(io.Discard, "", 0))
+	userRepo := &mockUserService{}
+	enrollmentRepo := enrollments.NewMemoryRepository()
+	enrollmentService := enrollments.NewService(enrollmentRepo, userRepo)
+	courseRepo := NewMemoryRepository()
+	courseService := NewService(courseRepo, userRepo, enrollmentService)
+	courseHandler := NewHandler(courseService, enrollmentService, log.New(io.Discard, "", 0))
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", courseHandler.HandleHealth)
 	mux.HandleFunc("GET /", courseHandler.HandleRoot)
@@ -34,7 +42,13 @@ func TestHandlerCourseLifecycle(t *testing.T) {
 	}
 	body, _ := json.Marshal(createPayload)
 
+	ctx := identity.ContextWithPrincipal(context.Background(), identity.Principal{
+		Subject: "auth0|123",
+		Roles:   []string{"admin"},
+	})
+
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/courses", bytes.NewReader(body))
+	createReq = createReq.WithContext(ctx)
 	createReq.Header.Set("Content-Type", "application/json")
 	createRes := httptest.NewRecorder()
 	handler.ServeHTTP(createRes, createReq)
@@ -55,6 +69,7 @@ func TestHandlerCourseLifecycle(t *testing.T) {
 	}
 
 	publishReq := httptest.NewRequest(http.MethodPost, "/api/v1/courses/"+created.ID+"/publish", nil)
+	publishReq = publishReq.WithContext(ctx)
 	publishRes := httptest.NewRecorder()
 	handler.ServeHTTP(publishRes, publishReq)
 	if publishRes.Code != http.StatusOK {

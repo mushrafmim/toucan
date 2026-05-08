@@ -2,6 +2,7 @@ package sections
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log"
@@ -10,11 +11,29 @@ import (
 	"testing"
 
 	"toucan/internal/courses"
+	"toucan/internal/enrollments"
+	"toucan/internal/identity"
+	"toucan/internal/users"
 )
 
+type mockUserService struct {
+	users.Service
+}
+
+func (m *mockUserService) GetByExternalSubject(ctx context.Context, subject string) (users.User, error) {
+	return users.User{
+		ID:              "user-123",
+		ExternalSubject: subject,
+		Roles:           []users.Role{users.RoleInstructor},
+	}, nil
+}
+
 func TestHandlerSectionLifecycle(t *testing.T) {
-	courseService := courses.NewService(courses.NewMemoryRepository())
-	courseHandler := courses.NewHandler(courseService, log.New(io.Discard, "", 0))
+	userRepo := &mockUserService{}
+	enrollmentRepo := enrollments.NewMemoryRepository()
+	enrollmentService := enrollments.NewService(enrollmentRepo, userRepo)
+	courseService := courses.NewService(courses.NewMemoryRepository(), userRepo, enrollmentService)
+	courseHandler := courses.NewHandler(courseService, enrollmentService, log.New(io.Discard, "", 0))
 	sectionHandler := NewHandler(NewService(NewMemoryRepository(), courseService))
 
 	mux := http.NewServeMux()
@@ -43,7 +62,14 @@ func TestHandlerSectionLifecycle(t *testing.T) {
 		"tags":        []string{"api", "rest"},
 	}
 	courseBody, _ := json.Marshal(createCoursePayload)
+
+	ctx := identity.ContextWithPrincipal(context.Background(), identity.Principal{
+		Subject: "auth0|123",
+		Roles:   []string{"admin"},
+	})
+
 	createCourseReq := httptest.NewRequest(http.MethodPost, "/api/v1/courses", bytes.NewReader(courseBody))
+	createCourseReq = createCourseReq.WithContext(ctx)
 	createCourseReq.Header.Set("Content-Type", "application/json")
 	createCourseRes := httptest.NewRecorder()
 	handler.ServeHTTP(createCourseRes, createCourseReq)

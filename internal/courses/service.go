@@ -1,31 +1,59 @@
 package courses
 
 import (
+	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	"toucan/internal/database"
+	"toucan/internal/enrollments"
+	"toucan/internal/identity"
+	"toucan/internal/users"
+)
+
+var (
+	ErrUnauthorized = errors.New("unauthorized")
 )
 
 type Service struct {
-	repo *Repository
+	repo              Repository
+	userRepo          users.Service
+	enrollmentService *enrollments.Service
 }
 
-func NewService(repo *Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo Repository, userRepo users.Service, enrollmentService *enrollments.Service) *Service {
+	return &Service{
+		repo:              repo,
+		userRepo:          userRepo,
+		enrollmentService: enrollmentService,
+	}
 }
 
-func (s *Service) List(filter ListFilter) (ListResult, error) {
+func (s *Service) List(ctx context.Context, filter ListFilter) (ListResult, error) {
 	if err := validateStatus(filter.Status); err != nil {
 		return ListResult{}, err
 	}
 	return s.repo.List(filter), nil
 }
 
-func (s *Service) Get(id string) (Course, error) {
+func (s *Service) Get(ctx context.Context, id string) (Course, error) {
 	return s.repo.Get(strings.TrimSpace(id))
 }
 
-func (s *Service) Create(input CreateCourseInput) (Course, error) {
+func (s *Service) Create(ctx context.Context, input CreateCourseInput) (Course, error) {
+	principal, ok := identity.PrincipalFromContext(ctx)
+	if !ok {
+		return Course{}, ErrUnauthorized
+	}
+
+	user, err := s.userRepo.GetByExternalSubject(ctx, principal.Subject)
+	if err != nil {
+		return Course{}, fmt.Errorf("resolve user: %w", err)
+	}
+
 	if err := validateCreateInput(input); err != nil {
 		return Course{}, err
 	}
@@ -40,13 +68,43 @@ func (s *Service) Create(input CreateCourseInput) (Course, error) {
 		Level:       defaultLevel(input.Level),
 		Tags:        normalizeTags(input.Tags),
 		Status:      StatusDraft,
+		CreatorID:   user.ID,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	return s.repo.Create(course)
+
+	var created Course
+	err = database.Transact(ctx, s.repo.DB(), func(tx *sql.Tx) error {
+		repo := s.repo.WithTx(tx)
+		enrollmentRepo := s.enrollmentService.WithTx(tx)
+
+		c, err := repo.Create(course)
+		if err != nil {
+			return err
+		}
+		created = c
+
+		// Add creator as owner
+		_, err = enrollmentRepo.Create(ctx, enrollments.Enrollment{
+			CourseID: created.ID,
+			UserID:   user.ID,
+			Role:     enrollments.RoleOwner,
+		})
+		return err
+	})
+
+	if err != nil {
+		return Course{}, err
+	}
+
+	return created, nil
 }
 
-func (s *Service) Update(id string, input UpdateCourseInput) (Course, error) {
+func (s *Service) Update(ctx context.Context, id string, input UpdateCourseInput) (Course, error) {
+	if err := s.authorize(ctx, id, enrollments.RoleManager); err != nil {
+		return Course{}, err
+	}
+
 	if err := validateUpdateInput(input); err != nil {
 		return Course{}, err
 	}
@@ -67,11 +125,18 @@ func (s *Service) Update(id string, input UpdateCourseInput) (Course, error) {
 	return s.repo.Update(course)
 }
 
-func (s *Service) Delete(id string) error {
+func (s *Service) Delete(ctx context.Context, id string) error {
+	if err := s.authorize(ctx, id, enrollments.RoleOwner); err != nil {
+		return err
+	}
 	return s.repo.Delete(strings.TrimSpace(id))
 }
 
-func (s *Service) Publish(id string) (Course, error) {
+func (s *Service) Publish(ctx context.Context, id string) (Course, error) {
+	if err := s.authorize(ctx, id, enrollments.RoleManager); err != nil {
+		return Course{}, err
+	}
+
 	course, err := s.repo.Get(strings.TrimSpace(id))
 	if err != nil {
 		return Course{}, err
@@ -86,7 +151,11 @@ func (s *Service) Publish(id string) (Course, error) {
 	return s.repo.Update(course)
 }
 
-func (s *Service) Archive(id string) (Course, error) {
+func (s *Service) Archive(ctx context.Context, id string) (Course, error) {
+	if err := s.authorize(ctx, id, enrollments.RoleManager); err != nil {
+		return Course{}, err
+	}
+
 	course, err := s.repo.Get(strings.TrimSpace(id))
 	if err != nil {
 		return Course{}, err
@@ -96,6 +165,41 @@ func (s *Service) Archive(id string) (Course, error) {
 	}
 	course.Status = StatusArchived
 	return s.repo.Update(course)
+}
+
+func (s *Service) authorize(ctx context.Context, courseID string, requiredRole enrollments.Role) error {
+	principal, ok := identity.PrincipalFromContext(ctx)
+	if !ok {
+		return ErrUnauthorized
+	}
+
+	// Global admins can do anything
+	for _, role := range principal.Roles {
+		if role == "admin" {
+			return nil
+		}
+	}
+
+	user, err := s.userRepo.GetByExternalSubject(ctx, principal.Subject)
+	if err != nil {
+		return ErrUnauthorized
+	}
+
+	enrollment, err := s.enrollmentService.Get(ctx, courseID, user.ID)
+	if err != nil {
+		return ErrUnauthorized
+	}
+
+	// Owner can do anything a manager can do
+	if enrollment.Role == enrollments.RoleOwner {
+		return nil
+	}
+
+	if requiredRole == enrollments.RoleManager && enrollment.Role == enrollments.RoleManager {
+		return nil
+	}
+
+	return ErrUnauthorized
 }
 
 func validateCreateInput(input CreateCourseInput) error {

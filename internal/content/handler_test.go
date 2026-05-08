@@ -2,6 +2,7 @@ package content
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log"
@@ -10,15 +11,34 @@ import (
 	"testing"
 
 	"toucan/internal/courses"
+	"toucan/internal/enrollments"
+	"toucan/internal/identity"
 	"toucan/internal/sections"
+	"toucan/internal/users"
 )
 
+type mockUserService struct {
+	users.Service
+}
+
+func (m *mockUserService) GetByExternalSubject(ctx context.Context, subject string) (users.User, error) {
+	return users.User{ID: "user-123"}, nil
+}
+
 func TestHandlerContentLifecycle(t *testing.T) {
-	courseService := courses.NewService(courses.NewMemoryRepository())
-	courseHandler := courses.NewHandler(courseService, log.New(io.Discard, "", 0))
-	sectionService := sections.NewService(sections.NewMemoryRepository(), courseService)
+	userSvc := &mockUserService{}
+	enrollmentRepo := enrollments.NewMemoryRepository()
+	enrollmentService := enrollments.NewService(enrollmentRepo, userSvc)
+	courseRepo := courses.NewMemoryRepository()
+	courseService := courses.NewService(courseRepo, userSvc, enrollmentService)
+	courseHandler := courses.NewHandler(courseService, enrollmentService, log.New(io.Discard, "", 0))
+
+	sectionRepo := sections.NewMemoryRepository()
+	sectionService := sections.NewService(sectionRepo, courseService)
 	sectionHandler := sections.NewHandler(sectionService)
-	contentHandler := NewHandler(NewService(NewMemoryRepository(), sectionService))
+
+	contentRepo := NewMemoryRepository()
+	contentHandler := NewHandler(NewService(contentRepo, sectionService))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", courseHandler.HandleHealth)
@@ -51,7 +71,13 @@ func TestHandlerContentLifecycle(t *testing.T) {
 		"tags":        []string{"api", "rest"},
 	}
 	courseBody, _ := json.Marshal(createCoursePayload)
+	ctx := identity.ContextWithPrincipal(context.Background(), identity.Principal{
+		Subject: "auth0|123",
+		Roles:   []string{"admin"},
+	})
+
 	createCourseReq := httptest.NewRequest(http.MethodPost, "/api/v1/courses", bytes.NewReader(courseBody))
+	createCourseReq = createCourseReq.WithContext(ctx)
 	createCourseReq.Header.Set("Content-Type", "application/json")
 	createCourseRes := httptest.NewRecorder()
 	handler.ServeHTTP(createCourseRes, createCourseReq)

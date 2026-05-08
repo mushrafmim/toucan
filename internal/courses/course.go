@@ -34,6 +34,7 @@ type Course struct {
 	Level       Level     `json:"level"`
 	Tags        []string  `json:"tags"`
 	Status      Status    `json:"status"`
+	CreatorID   string    `json:"creator_id"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	PublishedAt time.Time `json:"published_at,omitempty"`

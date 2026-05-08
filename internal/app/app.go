@@ -13,6 +13,7 @@ import (
 	"toucan/internal/content"
 	"toucan/internal/courses"
 	"toucan/internal/database"
+	"toucan/internal/enrollments"
 	"toucan/internal/identity"
 	"toucan/internal/sections"
 	"toucan/internal/seed"
@@ -49,21 +50,23 @@ func New(dbCfg database.Config, storageCfg storage.Config, seedCfg seed.Config, 
 		return nil, fmt.Errorf("init identity: %w", err)
 	}
 
+	userRepo := users.NewRepository(db)
+	userService := users.NewService(userRepo)
+	enrollmentRepo := enrollments.NewRepository(db)
+	enrollmentService := enrollments.NewService(enrollmentRepo, userService)
 	courseRepo := courses.NewRepository(db)
-	courseService := courses.NewService(courseRepo)
+	courseService := courses.NewService(courseRepo, userService, enrollmentService)
 	sectionRepo := sections.NewRepository(db)
 	sectionService := sections.NewService(sectionRepo, courseService)
 	contentRepo := content.NewRepository(db)
 	contentService := content.NewService(contentRepo, sectionService)
-	userRepo := users.NewRepository(db)
-	userService := users.NewService(userRepo)
 
 	if seedCfg.DemoData {
-		seed.Demo(courseService, sectionService, contentService)
+		seed.Demo(userService, courseService, sectionService, contentService)
 	}
 
 	return &App{
-		Handler: buildHandler(logger, courseService, sectionService, contentService, userService, store, auth),
+		Handler: buildHandler(logger, courseService, enrollmentService, sectionService, contentService, userService, store, auth),
 		Close:   db.Close,
 	}, nil
 }
@@ -91,13 +94,14 @@ func initStorage(cfg storage.Config) (storage.Store, error) {
 func buildHandler(
 	logger *log.Logger,
 	courseService *courses.Service,
+	enrollmentService *enrollments.Service,
 	sectionService *sections.Service,
 	contentService *content.Service,
 	userService users.Service,
 	store storage.Store,
 	auth *identity.Authenticator,
 ) http.Handler {
-	courseHandler := courses.NewHandler(courseService, logger)
+	courseHandler := courses.NewHandler(courseService, enrollmentService, logger)
 	sectionHandler := sections.NewHandler(sectionService)
 	contentHandler := content.NewHandler(contentService)
 	userHandler := users.NewHandler(userService)
@@ -111,6 +115,7 @@ func buildHandler(
 	mux.Handle("GET /api/v1/courses", requireAuth(http.HandlerFunc(courseHandler.HandleListCourses)))
 	mux.Handle("POST /api/v1/courses", requireAuth(http.HandlerFunc(courseHandler.HandleCreateCourse)))
 	mux.Handle("GET /api/v1/courses/{id}", requireAuth(http.HandlerFunc(courseHandler.HandleGetCourse)))
+	mux.Handle("GET /api/v1/courses/{id}/member/me", requireAuth(http.HandlerFunc(courseHandler.HandleGetMyMembership)))
 	mux.Handle("PUT /api/v1/courses/{id}", requireAuth(http.HandlerFunc(courseHandler.HandleUpdateCourse)))
 	mux.Handle("DELETE /api/v1/courses/{id}", requireAuth(http.HandlerFunc(courseHandler.HandleDeleteCourse)))
 	mux.Handle("POST /api/v1/courses/{id}/publish", requireAuth(http.HandlerFunc(courseHandler.HandlePublishCourse)))

@@ -9,15 +9,23 @@ import (
 	"toucan/internal/database"
 )
 
-type Repository struct {
+type Repository interface {
+	List(filter ListFilter) ListResult
+	Get(id string) (Item, error)
+	Create(item Item) (Item, error)
+	Update(item Item) (Item, error)
+	Delete(id string) error
+}
+
+type repository struct {
 	db *sql.DB
 }
 
-func NewRepository(db *sql.DB) *Repository {
-	return &Repository{db: db}
+func NewRepository(db *sql.DB) Repository {
+	return &repository{db: db}
 }
 
-func (r *Repository) List(filter ListFilter) ListResult {
+func (r *repository) List(filter ListFilter) ListResult {
 	page := max(filter.Page, 1)
 	pageSize := filter.PageSize
 	if pageSize <= 0 {
@@ -77,7 +85,7 @@ func (r *Repository) List(filter ListFilter) ListResult {
 	}
 }
 
-func (r *Repository) Get(id string) (Item, error) {
+func (r *repository) Get(id string) (Item, error) {
 	row := r.db.QueryRowContext(
 		context.Background(),
 		`SELECT id, section_id, title, summary, type, position, source_url, body, metadata, created_at, updated_at
@@ -95,7 +103,7 @@ func (r *Repository) Get(id string) (Item, error) {
 	return item, nil
 }
 
-func (r *Repository) Create(item Item) (Item, error) {
+func (r *repository) Create(item Item) (Item, error) {
 	if item.ID == "" {
 		item.ID = database.NewID()
 	}
@@ -134,7 +142,7 @@ func (r *Repository) Create(item Item) (Item, error) {
 	return item, nil
 }
 
-func (r *Repository) Update(item Item) (Item, error) {
+func (r *repository) Update(item Item) (Item, error) {
 	item.UpdatedAt = time.Now().UTC()
 	metadataJSON, err := json.Marshal(item.Metadata)
 	if err != nil {
@@ -169,7 +177,7 @@ func (r *Repository) Update(item Item) (Item, error) {
 	return item, nil
 }
 
-func (r *Repository) Delete(id string) error {
+func (r *repository) Delete(id string) error {
 	result, err := r.db.ExecContext(context.Background(), `DELETE FROM content_items WHERE id = $1`, id)
 	if err != nil {
 		return err
