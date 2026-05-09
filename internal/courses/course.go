@@ -59,6 +59,7 @@ type UpdateCourseInput struct {
 }
 
 type ListFilter struct {
+	UserID   string
 	Query    string
 	Status   Status
 	Page     int

@@ -48,6 +48,22 @@ func (h *Handler) HandleListCourses(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
+func (h *Handler) HandleListMyCourses(w http.ResponseWriter, r *http.Request) {
+	filter := ListFilter{
+		Query:    r.URL.Query().Get("q"),
+		Status:   Status(r.URL.Query().Get("status")),
+		Page:     parseInt(r.URL.Query().Get("page"), 1),
+		PageSize: parseInt(r.URL.Query().Get("page_size"), 10),
+	}
+
+	result, err := h.service.ListMyCourses(r.Context(), filter)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (h *Handler) HandleGetCourse(w http.ResponseWriter, r *http.Request) {
 	course, err := h.service.Get(r.Context(), r.PathValue("id"))
 	if err != nil {

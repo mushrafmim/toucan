@@ -102,6 +102,7 @@ func buildHandler(
 	auth *identity.Authenticator,
 ) http.Handler {
 	courseHandler := courses.NewHandler(courseService, enrollmentService, logger)
+	enrollmentHandler := enrollments.NewHandler(enrollmentService)
 	sectionHandler := sections.NewHandler(sectionService)
 	contentHandler := content.NewHandler(contentService)
 	userHandler := users.NewHandler(userService)
@@ -113,6 +114,7 @@ func buildHandler(
 
 	// API routes
 	mux.Handle("GET /api/v1/courses", requireAuth(http.HandlerFunc(courseHandler.HandleListCourses)))
+	mux.Handle("GET /api/v1/me/courses", requireAuth(http.HandlerFunc(courseHandler.HandleListMyCourses)))
 	mux.Handle("POST /api/v1/courses", requireAuth(http.HandlerFunc(courseHandler.HandleCreateCourse)))
 	mux.Handle("GET /api/v1/courses/{id}", requireAuth(http.HandlerFunc(courseHandler.HandleGetCourse)))
 	mux.Handle("GET /api/v1/courses/{id}/member/me", requireAuth(http.HandlerFunc(courseHandler.HandleGetMyMembership)))
@@ -120,6 +122,10 @@ func buildHandler(
 	mux.Handle("DELETE /api/v1/courses/{id}", requireAuth(http.HandlerFunc(courseHandler.HandleDeleteCourse)))
 	mux.Handle("POST /api/v1/courses/{id}/publish", requireAuth(http.HandlerFunc(courseHandler.HandlePublishCourse)))
 	mux.Handle("POST /api/v1/courses/{id}/archive", requireAuth(http.HandlerFunc(courseHandler.HandleArchiveCourse)))
+
+	mux.Handle("POST /api/v1/enrollments", requireAuth(http.HandlerFunc(enrollmentHandler.HandleCreateEnrollment)))
+	mux.Handle("DELETE /api/v1/enrollments", requireAuth(http.HandlerFunc(enrollmentHandler.HandleDeleteEnrollment)))
+	mux.Handle("GET /api/v1/courses/{id}/enrollments", requireAuth(http.HandlerFunc(enrollmentHandler.HandleListCourseEnrollments)))
 
 	mux.Handle("GET /api/v1/sections", requireAuth(http.HandlerFunc(sectionHandler.HandleListSections)))
 	mux.Handle("POST /api/v1/sections", requireAuth(http.HandlerFunc(sectionHandler.HandleCreateSection)))

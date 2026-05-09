@@ -62,9 +62,17 @@ func (r *concreteRepository) List(filter ListFilter) ListResult {
 	}
 
 	ctx := context.Background()
-	where := make([]string, 0, 2)
-	args := make([]any, 0, 4)
+	where := make([]string, 0, 3)
+	args := make([]any, 0, 5)
 	argIndex := 1
+
+	join := ""
+	if filter.UserID != "" {
+		join = " JOIN course_members m ON courses.id = m.course_id"
+		where = append(where, fmt.Sprintf("m.user_id = $%d", argIndex))
+		args = append(args, filter.UserID)
+		argIndex++
+	}
 
 	if filter.Status != "" {
 		where = append(where, fmt.Sprintf("status = $%d", argIndex))
@@ -90,7 +98,7 @@ func (r *concreteRepository) List(filter ListFilter) ListResult {
 		whereClause = " WHERE " + strings.Join(where, " AND ")
 	}
 
-	countQuery := "SELECT COUNT(*) FROM courses" + whereClause
+	countQuery := "SELECT COUNT(*) FROM courses" + join + whereClause
 	var total int
 	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		return ListResult{Items: []Course{}, Page: page, PageSize: pageSize}
@@ -99,7 +107,7 @@ func (r *concreteRepository) List(filter ListFilter) ListResult {
 	listArgs := append(append([]any{}, args...), pageSize, (page-1)*pageSize)
 	query := `
 		SELECT id, title, slug, summary, description, category, level, tags, status, creator_id, created_at, updated_at, published_at
-		FROM courses` + whereClause + `
+		FROM courses` + join + whereClause + `
 		ORDER BY created_at DESC, id ASC
 		LIMIT $` + fmt.Sprint(argIndex) + ` OFFSET $` + fmt.Sprint(argIndex+1)
 

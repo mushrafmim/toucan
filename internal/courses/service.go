@@ -39,6 +39,21 @@ func (s *Service) List(ctx context.Context, filter ListFilter) (ListResult, erro
 	return s.repo.List(filter), nil
 }
 
+func (s *Service) ListMyCourses(ctx context.Context, filter ListFilter) (ListResult, error) {
+	principal, ok := identity.PrincipalFromContext(ctx)
+	if !ok {
+		return ListResult{}, ErrUnauthorized
+	}
+
+	user, err := s.userRepo.GetByExternalSubject(ctx, principal.Subject)
+	if err != nil {
+		return ListResult{}, fmt.Errorf("resolve user: %w", err)
+	}
+
+	filter.UserID = user.ID
+	return s.repo.List(filter), nil
+}
+
 func (s *Service) Get(ctx context.Context, id string) (Course, error) {
 	return s.repo.Get(strings.TrimSpace(id))
 }
