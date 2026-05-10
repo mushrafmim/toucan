@@ -116,8 +116,8 @@ func TestHandlerContentLifecycle(t *testing.T) {
 		"summary":    "A quick welcome video.",
 		"type":       "video",
 		"position":   1,
-		"source_url": "https://cdn.example.test/api-intro.mp4",
-		"metadata": map[string]any{
+		"configs": map[string]any{
+			"source_url":       "https://cdn.example.test/api-intro.mp4",
 			"duration_seconds": float64(90),
 		},
 	}

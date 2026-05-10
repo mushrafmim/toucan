@@ -54,9 +54,7 @@ export type ContentItem = {
   summary: string
   type: ContentType
   position: number
-  source_url?: string
-  body?: string
-  metadata?: Record<string, unknown>
+  configs: Record<string, any>
   created_at: string
   updated_at: string
 }

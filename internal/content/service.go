@@ -51,9 +51,7 @@ func (s *Service) Create(ctx context.Context, input CreateItemInput) (Item, erro
 		Summary:   normalizeText(input.Summary),
 		Type:      input.Type,
 		Position:  normalizePosition(input.Position, 1),
-		SourceURL: normalizeText(input.SourceURL),
-		Body:      normalizeText(input.Body),
-		Metadata:  cloneMetadata(input.Metadata),
+		Configs:   cloneConfigs(input.Configs),
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -72,9 +70,7 @@ func (s *Service) Update(ctx context.Context, id string, input UpdateItemInput) 
 	item.Summary = normalizeText(input.Summary)
 	item.Type = input.Type
 	item.Position = normalizePosition(input.Position, item.Position)
-	item.SourceURL = normalizeText(input.SourceURL)
-	item.Body = normalizeText(input.Body)
-	item.Metadata = cloneMetadata(input.Metadata)
+	item.Configs = cloneConfigs(input.Configs)
 	return s.repo.Update(item)
 }
 

@@ -26,9 +26,7 @@ type Item struct {
 	Summary   string         `json:"summary"`
 	Type      Type           `json:"type"`
 	Position  int            `json:"position"`
-	SourceURL string         `json:"source_url,omitempty"`
-	Body      string         `json:"body,omitempty"`
-	Metadata  map[string]any `json:"metadata,omitempty"`
+	Configs   map[string]any `json:"configs,omitempty"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 }
@@ -39,19 +37,15 @@ type CreateItemInput struct {
 	Summary   string         `json:"summary"`
 	Type      Type           `json:"type"`
 	Position  int            `json:"position"`
-	SourceURL string         `json:"source_url"`
-	Body      string         `json:"body"`
-	Metadata  map[string]any `json:"metadata"`
+	Configs   map[string]any `json:"configs"`
 }
 
 type UpdateItemInput struct {
-	Title     string         `json:"title"`
-	Summary   string         `json:"summary"`
-	Type      Type           `json:"type"`
-	Position  int            `json:"position"`
-	SourceURL string         `json:"source_url"`
-	Body      string         `json:"body"`
-	Metadata  map[string]any `json:"metadata"`
+	Title    string         `json:"title"`
+	Summary  string         `json:"summary"`
+	Type     Type           `json:"type"`
+	Position int            `json:"position"`
+	Configs  map[string]any `json:"configs"`
 }
 
 type ListFilter struct {
@@ -68,7 +62,7 @@ var (
 	ErrValidation  = errors.New("validation failed")
 )
 
-func cloneMetadata(m map[string]any) map[string]any {
+func cloneConfigs(m map[string]any) map[string]any {
 	if m == nil {
 		return nil
 	}

@@ -10,9 +10,9 @@ type ContentRendererProps = {
 export function ContentRenderer({ item }: ContentRendererProps) {
   switch (item.type) {
     case 'video':
-      return <VideoRenderer url={item.source_url || ''} title={item.title} />
+      return <VideoRenderer url={item.configs.source_url || ''} title={item.title} />
     case 'pdf':
-      return <PdfRenderer url={item.source_url} title={item.title} />
+      return <PdfRenderer url={item.configs.source_url} title={item.title} />
     default:
       return <DefaultRenderer item={item} />
   }

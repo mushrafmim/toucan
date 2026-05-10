@@ -64,9 +64,7 @@ func EnsureSchema(db *sql.DB) error {
 			summary TEXT NOT NULL,
 			type TEXT NOT NULL,
 			position INTEGER NOT NULL,
-			source_url TEXT NULL,
-			body TEXT NULL,
-			metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+			configs JSONB NOT NULL DEFAULT '{}'::jsonb,
 			created_at TIMESTAMPTZ NOT NULL,
 			updated_at TIMESTAMPTZ NOT NULL
 		)

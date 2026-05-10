@@ -208,7 +208,7 @@ export function CourseDetailPage() {
                                 </Card>
                               )}
 
-                              <Dialog.Content maxWidth="90vw" style={{ height: '85vh' }}>
+                                  <Dialog.Content maxWidth="90vw" style={{ height: '85vh' }}>
                                 <Dialog.Title>{item.title}</Dialog.Title>
                                 <Dialog.Description size="2" mb="4">
                                   {item.summary}
@@ -224,8 +224,8 @@ export function CourseDetailPage() {
                                       Close
                                     </Button>
                                   </Dialog.Close>
-                                  {item.source_url && (
-                                    <Button onClick={() => window.open(item.source_url, '_blank')}>
+                                  {item.configs.source_url && (
+                                    <Button onClick={() => window.open(item.configs.source_url, '_blank')}>
                                       <ExternalLink size={14} />
                                       Open in New Tab
                                     </Button>

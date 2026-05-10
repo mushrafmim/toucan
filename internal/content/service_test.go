@@ -18,6 +18,38 @@ func (m *mockSectionLookup) Get(ctx context.Context, id string) (sections.Sectio
 	return args.Get(0).(sections.Section), args.Error(1)
 }
 
+type MockRepository struct {
+	mock.Mock
+}
+
+func (m *MockRepository) List(filter ListFilter) ListResult {
+	args := m.Called(filter)
+	return args.Get(0).(ListResult)
+}
+
+func (m *MockRepository) Get(id string) (Item, error) {
+	args := m.Called(id)
+	return args.Get(0).(Item), args.Error(1)
+}
+
+func (m *MockRepository) Create(item Item) (Item, error) {
+	args := m.Called(item)
+	if fn, ok := args.Get(0).(func(Item) Item); ok {
+		return fn(item), args.Error(1)
+	}
+	return args.Get(0).(Item), args.Error(1)
+}
+
+func (m *MockRepository) Update(item Item) (Item, error) {
+	args := m.Called(item)
+	return args.Get(0).(Item), args.Error(1)
+}
+
+func (m *MockRepository) Delete(id string) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
 func TestServiceCreateContentItem(t *testing.T) {
 	mockRepo := new(MockRepository)
 	mockSections := new(mockSectionLookup)

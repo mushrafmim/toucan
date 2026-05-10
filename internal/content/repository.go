@@ -53,7 +53,7 @@ func (r *repository) List(filter ListFilter) ListResult {
 	offsetPos := len(args) + 2
 	listArgs := append(append([]any{}, args...), pageSize, (page-1)*pageSize)
 	query := fmt.Sprintf(
-		`SELECT id, section_id, title, summary, type, position, source_url, body, metadata, created_at, updated_at
+		`SELECT id, section_id, title, summary, type, position, configs, created_at, updated_at
 		 FROM content_items%s
 		 ORDER BY position ASC, created_at ASC, id ASC
 		 LIMIT $%d OFFSET $%d`,
@@ -88,7 +88,7 @@ func (r *repository) List(filter ListFilter) ListResult {
 func (r *repository) Get(id string) (Item, error) {
 	row := r.db.QueryRowContext(
 		context.Background(),
-		`SELECT id, section_id, title, summary, type, position, source_url, body, metadata, created_at, updated_at
+		`SELECT id, section_id, title, summary, type, position, configs, created_at, updated_at
 		 FROM content_items WHERE id = $1`,
 		id,
 	)
@@ -114,7 +114,7 @@ func (r *repository) Create(item Item) (Item, error) {
 		item.UpdatedAt = item.CreatedAt
 	}
 
-	metadataJSON, err := json.Marshal(item.Metadata)
+	configsJSON, err := json.Marshal(item.Configs)
 	if err != nil {
 		return Item{}, err
 	}
@@ -122,17 +122,15 @@ func (r *repository) Create(item Item) (Item, error) {
 	_, err = r.db.ExecContext(
 		context.Background(),
 		`INSERT INTO content_items (
-			id, section_id, title, summary, type, position, source_url, body, metadata, created_at, updated_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+			id, section_id, title, summary, type, position, configs, created_at, updated_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
 		item.ID,
 		item.SectionID,
 		item.Title,
 		item.Summary,
 		string(item.Type),
 		item.Position,
-		database.NullString(item.SourceURL),
-		database.NullString(item.Body),
-		metadataJSON,
+		configsJSON,
 		item.CreatedAt,
 		item.UpdatedAt,
 	)
@@ -144,7 +142,7 @@ func (r *repository) Create(item Item) (Item, error) {
 
 func (r *repository) Update(item Item) (Item, error) {
 	item.UpdatedAt = time.Now().UTC()
-	metadataJSON, err := json.Marshal(item.Metadata)
+	configsJSON, err := json.Marshal(item.Configs)
 	if err != nil {
 		return Item{}, err
 	}
@@ -152,16 +150,14 @@ func (r *repository) Update(item Item) (Item, error) {
 	result, err := r.db.ExecContext(
 		context.Background(),
 		`UPDATE content_items
-		 SET title = $2, summary = $3, type = $4, position = $5, source_url = $6, body = $7, metadata = $8, updated_at = $9
+		 SET title = $2, summary = $3, type = $4, position = $5, configs = $6, updated_at = $7
 		 WHERE id = $1`,
 		item.ID,
 		item.Title,
 		item.Summary,
 		string(item.Type),
 		item.Position,
-		database.NullString(item.SourceURL),
-		database.NullString(item.Body),
-		metadataJSON,
+		configsJSON,
 		item.UpdatedAt,
 	)
 	if err != nil {
@@ -198,9 +194,7 @@ type contentScanner interface {
 
 func scanContentItem(scanner contentScanner) (Item, error) {
 	var item Item
-	var sourceURL sql.NullString
-	var body sql.NullString
-	var metadataJSON []byte
+	var configsJSON []byte
 
 	err := scanner.Scan(
 		&item.ID,
@@ -209,23 +203,15 @@ func scanContentItem(scanner contentScanner) (Item, error) {
 		&item.Summary,
 		&item.Type,
 		&item.Position,
-		&sourceURL,
-		&body,
-		&metadataJSON,
+		&configsJSON,
 		&item.CreatedAt,
 		&item.UpdatedAt,
 	)
 	if err != nil {
 		return Item{}, err
 	}
-	if sourceURL.Valid {
-		item.SourceURL = sourceURL.String
-	}
-	if body.Valid {
-		item.Body = body.String
-	}
-	if len(metadataJSON) > 0 {
-		if err := json.Unmarshal(metadataJSON, &item.Metadata); err != nil {
+	if len(configsJSON) > 0 {
+		if err := json.Unmarshal(configsJSON, &item.Configs); err != nil {
 			return Item{}, err
 		}
 	}

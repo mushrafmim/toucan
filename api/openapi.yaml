@@ -823,11 +823,7 @@ components:
           $ref: '#/components/schemas/ContentType'
         position:
           type: integer
-        source_url:
-          type: string
-        body:
-          type: string
-        metadata:
+        configs:
           type: object
           additionalProperties: true
         created_at:
@@ -850,11 +846,7 @@ components:
           $ref: '#/components/schemas/ContentType'
         position:
           type: integer
-        source_url:
-          type: string
-        body:
-          type: string
-        metadata:
+        configs:
           type: object
           additionalProperties: true
     UpdateItemInput:
@@ -868,11 +860,7 @@ components:
           $ref: '#/components/schemas/ContentType'
         position:
           type: integer
-        source_url:
-          type: string
-        body:
-          type: string
-        metadata:
+        configs:
           type: object
           additionalProperties: true
     ContentListResult:

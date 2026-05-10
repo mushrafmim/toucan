@@ -21,18 +21,18 @@ export function DefaultRenderer({ item }: DefaultRendererProps) {
         </Flex>
 
         <Box className="flex-1 overflow-auto rounded-lg bg-gray-50 p-6 border border-dashed border-gray-200">
-          {item.body ? (
+          {item.configs.body ? (
             <Text size="3" className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-              {item.body}
+              {item.configs.body}
             </Text>
           ) : (
             <Text color="gray" size="2" className="italic">No additional body content available for this item.</Text>
           )}
         </Box>
 
-        {item.source_url && (
+        {item.configs.source_url && (
           <Flex justify="end">
-            <Button variant="soft" color="amber" onClick={() => window.open(item.source_url, '_blank')}>
+            <Button variant="soft" color="amber" onClick={() => window.open(item.configs.source_url, '_blank')}>
               <ExternalLink size={16} />
               Open Resource
             </Button>

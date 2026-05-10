@@ -94,7 +94,7 @@ export function FocusedVideoPage() {
 
         {/* Video Player Section */}
         <Box className="relative flex-1 bg-black">
-          <VideoRenderer url={content.source_url || ''} title={content.title} />
+          <VideoRenderer url={content.configs.source_url || ''} title={content.title} />
         </Box>
 
         {/* Bottom Content / Controls */}
@@ -103,7 +103,7 @@ export function FocusedVideoPage() {
             <Box className="max-w-2xl">
               <Text color="gray" size="2" className="mb-2 block uppercase tracking-widest">Description</Text>
               <Text size="3" className="text-gray-300">
-                {content.description || 'This lesson covers the core foundations. Take your time to understand the concepts before moving to the next section.'}
+                {content.configs.description || 'This lesson covers the core foundations. Take your time to understand the concepts before moving to the next section.'}
               </Text>
             </Box>
             <Flex gap="3">

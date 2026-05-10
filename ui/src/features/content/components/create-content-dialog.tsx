@@ -36,8 +36,13 @@ export function CreateContentDialog({ sectionId, onSuccess }: CreateContentDialo
     setLoading(true)
 
     try {
+      const { source_url, body, ...rest } = form
       await createContent({
-        ...form,
+        ...rest,
+        configs: {
+          source_url,
+          body,
+        },
         section_id: sectionId,
         position: 0,
       })
