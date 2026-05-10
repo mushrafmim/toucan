@@ -58,8 +58,29 @@ export async function postJSON<T>(input: string, body: unknown): Promise<T> {
 
   return response.json() as Promise<T>
 }
+export async function deleteItem(input: string): Promise<void> {
+  const response = await fetch(input, {
+    method: 'DELETE',
+    headers: requestHeaders(),
+  })
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`
+    try {
+      const payload = (await response.json()) as { error?: string }
+      if (payload.error) {
+        message = payload.error
+      }
+    } catch {
+      // Keep the fallback message when the response is not JSON.
+    }
+    throw new ApiError(message, response.status)
+  }
+}
 
 function requestHeaders(extra?: HeadersInit): HeadersInit {
+
+
   const token = getAccessTokenSnapshot()
 
   return {

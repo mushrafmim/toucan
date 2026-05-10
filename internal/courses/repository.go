@@ -11,7 +11,7 @@ import (
 )
 
 type Repository interface {
-	List(filter ListFilter) ListResult
+	List(filter ListFilter) (ListResult, error)
 	Get(id string) (Course, error)
 	Create(course Course) (Course, error)
 	Update(course Course) (Course, error)
@@ -47,7 +47,7 @@ func (r *concreteRepository) WithTx(tx *sql.Tx) Repository {
 	return &concreteRepository{db: tx, conn: r.conn}
 }
 
-func (r *concreteRepository) List(filter ListFilter) ListResult {
+func (r *concreteRepository) List(filter ListFilter) (ListResult, error) {
 	page := filter.Page
 	if page <= 0 {
 		page = 1
@@ -75,7 +75,7 @@ func (r *concreteRepository) List(filter ListFilter) ListResult {
 	}
 
 	if filter.Status != "" {
-		where = append(where, fmt.Sprintf("status = $%d", argIndex))
+		where = append(where, fmt.Sprintf("courses.status = $%d", argIndex))
 		args = append(args, string(filter.Status))
 		argIndex++
 	}
@@ -83,11 +83,11 @@ func (r *concreteRepository) List(filter ListFilter) ListResult {
 	if query := strings.TrimSpace(filter.Query); query != "" {
 		pattern := "%" + strings.ToLower(query) + "%"
 		where = append(where, fmt.Sprintf(`(
-			LOWER(title) LIKE $%d OR
-			LOWER(summary) LIKE $%d OR
-			LOWER(description) LIKE $%d OR
-			LOWER(category) LIKE $%d OR
-			LOWER(slug) LIKE $%d
+			LOWER(courses.title) LIKE $%d OR
+			LOWER(courses.summary) LIKE $%d OR
+			LOWER(courses.description) LIKE $%d OR
+			LOWER(courses.category) LIKE $%d OR
+			LOWER(courses.slug) LIKE $%d
 		)`, argIndex, argIndex, argIndex, argIndex, argIndex))
 		args = append(args, pattern)
 		argIndex++
@@ -101,19 +101,22 @@ func (r *concreteRepository) List(filter ListFilter) ListResult {
 	countQuery := "SELECT COUNT(*) FROM courses" + join + whereClause
 	var total int
 	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
-		return ListResult{Items: []Course{}, Page: page, PageSize: pageSize}
+		return ListResult{Items: []Course{}, Page: page, PageSize: pageSize}, fmt.Errorf("count courses: %w", err)
 	}
 
 	listArgs := append(append([]any{}, args...), pageSize, (page-1)*pageSize)
 	query := `
-		SELECT id, title, slug, summary, description, category, level, tags, status, creator_id, created_at, updated_at, published_at
+		SELECT 
+			courses.id, courses.title, courses.slug, courses.summary, courses.description, 
+			courses.category, courses.level, courses.tags, courses.status, courses.creator_id, 
+			courses.created_at, courses.updated_at, courses.published_at
 		FROM courses` + join + whereClause + `
-		ORDER BY created_at DESC, id ASC
+		ORDER BY courses.created_at DESC, courses.id ASC
 		LIMIT $` + fmt.Sprint(argIndex) + ` OFFSET $` + fmt.Sprint(argIndex+1)
 
 	rows, err := r.db.QueryContext(ctx, query, listArgs...)
 	if err != nil {
-		return ListResult{Items: []Course{}, Page: page, PageSize: pageSize, Total: total}
+		return ListResult{Items: []Course{}, Page: page, PageSize: pageSize, Total: total}, fmt.Errorf("query courses: %w", err)
 	}
 	defer rows.Close()
 
@@ -121,7 +124,7 @@ func (r *concreteRepository) List(filter ListFilter) ListResult {
 	for rows.Next() {
 		course, scanErr := scanCourse(rows)
 		if scanErr != nil {
-			return ListResult{Items: []Course{}, Page: page, PageSize: pageSize, Total: total}
+			return ListResult{Items: []Course{}, Page: page, PageSize: pageSize, Total: total}, fmt.Errorf("scan course: %w", scanErr)
 		}
 		items = append(items, course)
 	}
@@ -131,7 +134,7 @@ func (r *concreteRepository) List(filter ListFilter) ListResult {
 		Page:     page,
 		PageSize: pageSize,
 		Total:    total,
-	}
+	}, nil
 }
 
 func (r *concreteRepository) Get(id string) (Course, error) {

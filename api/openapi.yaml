@@ -9,6 +9,10 @@ servers:
 tags:
   - name: Courses
     description: Course catalog and management
+  - name: Enrollments
+    description: Course membership and enrollment management
+  - name: Users
+    description: User management
   - name: Sections
     description: Course structure and module management
   - name: Content
@@ -26,6 +30,124 @@ paths:
       responses:
         '200':
           description: OK
+  /me/courses:
+    get:
+      tags:
+        - Courses
+      summary: List courses the current user is enrolled in
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/CourseStatus'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: List of enrolled courses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseListResult'
+        '401':
+          description: Unauthorized
+  /enrollments:
+    post:
+      tags:
+        - Enrollments
+      summary: Create a new enrollment
+      description: Admins or Course Owners can enroll users.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Enrollment'
+      responses:
+        '201':
+          description: Enrollment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+        '403':
+          description: Forbidden
+    delete:
+      tags:
+        - Enrollments
+      summary: Remove an enrollment
+      parameters:
+        - name: course_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Enrollment removed
+        '403':
+          description: Forbidden
+        '404':
+          description: Enrollment not found
+  /courses/{id}/enrollments:
+    get:
+      tags:
+        - Enrollments
+      summary: List all enrollments for a course
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of enrollments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Enrollment'
+        '403':
+          description: Forbidden
+  /courses/{id}/member/me:
+    get:
+      tags:
+        - Enrollments
+      summary: Get current user's enrollment details for a course
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Enrollment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+        '404':
+          description: User is not enrolled in this course
   /uploads/presign:
     post:
       tags:
@@ -98,7 +220,7 @@ paths:
         - Courses
       summary: List courses
       parameters:
-        - name: query
+        - name: q
           in: query
           schema:
             type: string
@@ -115,7 +237,7 @@ paths:
           in: query
           schema:
             type: integer
-            default: 20
+            default: 10
       responses:
         '200':
           description: List of courses
@@ -412,6 +534,66 @@ paths:
           description: Content item deleted
         '404':
           description: Content item not found
+  /users:
+    get:
+      tags:
+        - Users
+      summary: List users
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResult'
+    post:
+      tags:
+        - Users
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+  /users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Users
+      summary: Get a user by ID
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
 components:
   schemas:
     CourseStatus:
@@ -423,6 +605,12 @@ components:
     ContentType:
       type: string
       enum: [video, pdf, rich_text, file, link, embed]
+    EnrollmentRole:
+      type: string
+      enum: [owner, manager, learner]
+    UserRole:
+      type: string
+      enum: [admin, instructor, learner]
     Course:
       type: object
       properties:
@@ -497,6 +685,70 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Course'
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+    Enrollment:
+      type: object
+      required: [course_id, user_id, role]
+      properties:
+        course_id:
+          type: string
+        user_id:
+          type: string
+        role:
+          $ref: '#/components/schemas/EnrollmentRole'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        external_subject:
+          type: string
+        email:
+          type: string
+        display_name:
+          type: string
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserRole'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CreateUserRequest:
+      type: object
+      required: [external_subject, email, displayName]
+      properties:
+        external_subject:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserRole'
+    UserListResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
         page:
           type: integer
         page_size:

@@ -5,6 +5,7 @@ import "context"
 type Principal struct {
 	Subject string
 	Email   string
+	Name    string
 	Roles   []string
 	Scopes  []string
 }

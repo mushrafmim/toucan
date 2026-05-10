@@ -21,7 +21,8 @@ const defaultJWKSCacheTTL = 15 * time.Minute
 var defaultDevPrincipal = Principal{
 	Subject: "dev-user",
 	Email:   "dev@toucan.local",
-	Roles:   []string{"admin"},
+	Name:    "Development User",
+	Roles:   []string{"admin", "instructor", "learner"},
 	Scopes:  []string{"dev"},
 }
 
@@ -34,6 +35,10 @@ type Authenticator struct {
 	cfg    Config
 	client *http.Client
 	now    func() time.Time
+
+	// SyncUser is an optional callback triggered after successful authentication
+	// to ensure the user record exists in the local database.
+	SyncUser func(context.Context, Principal) error
 
 	mu        sync.Mutex
 	keys      map[string]*rsa.PublicKey
@@ -77,7 +82,14 @@ func NewAuthenticatorWithClient(cfg Config, client *http.Client) (*Authenticator
 func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 	if !a.cfg.Enabled {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := ContextWithPrincipal(r.Context(), a.cfg.DevPrincipal)
+			principal := a.cfg.DevPrincipal
+			if a.SyncUser != nil {
+				if err := a.SyncUser(r.Context(), principal); err != nil {
+					http.Error(w, "user synchronization failed", http.StatusInternalServerError)
+					return
+				}
+			}
+			ctx := ContextWithPrincipal(r.Context(), principal)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -88,6 +100,14 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 			writeUnauthorized(w)
 			return
 		}
+
+		if a.SyncUser != nil {
+			if err := a.SyncUser(r.Context(), principal); err != nil {
+				http.Error(w, "user synchronization failed", http.StatusInternalServerError)
+				return
+			}
+		}
+
 		next.ServeHTTP(w, r.WithContext(ContextWithPrincipal(r.Context(), principal)))
 	})
 }
@@ -246,6 +266,7 @@ type tokenClaims struct {
 	ExpiresAt int64       `json:"exp"`
 	NotBefore int64       `json:"nbf"`
 	Email     string      `json:"email"`
+	Name      string      `json:"name"`
 	Scope     string      `json:"scope"`
 	Scopes    []string    `json:"scp"`
 	Roles     stringSlice `json:"roles"`
@@ -280,6 +301,7 @@ func (c tokenClaims) principal() Principal {
 	return Principal{
 		Subject: c.Subject,
 		Email:   c.Email,
+		Name:    c.Name,
 		Roles:   roles,
 		Scopes:  scopes,
 	}

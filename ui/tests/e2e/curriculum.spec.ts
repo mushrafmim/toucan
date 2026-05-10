@@ -5,7 +5,7 @@ test.describe('Teacher Curriculum Management', () => {
     await page.goto('http://localhost:5173/courses');
     
     // Switch to Instructor role to see management buttons
-    await page.getByRole('button', { name: 'Student' }).click();
+    await page.getByRole('button', { name: 'Learner' }).click();
     await page.getByRole('menuitem').filter({ hasText: 'Instructor' }).click();
   });
 

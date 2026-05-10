@@ -36,7 +36,7 @@ func (s *Service) List(ctx context.Context, filter ListFilter) (ListResult, erro
 	if err := validateStatus(filter.Status); err != nil {
 		return ListResult{}, err
 	}
-	return s.repo.List(filter), nil
+	return s.repo.List(filter)
 }
 
 func (s *Service) ListMyCourses(ctx context.Context, filter ListFilter) (ListResult, error) {
@@ -51,7 +51,7 @@ func (s *Service) ListMyCourses(ctx context.Context, filter ListFilter) (ListRes
 	}
 
 	filter.UserID = user.ID
-	return s.repo.List(filter), nil
+	return s.repo.List(filter)
 }
 
 func (s *Service) Get(ctx context.Context, id string) (Course, error) {
@@ -61,6 +61,19 @@ func (s *Service) Get(ctx context.Context, id string) (Course, error) {
 func (s *Service) Create(ctx context.Context, input CreateCourseInput) (Course, error) {
 	principal, ok := identity.PrincipalFromContext(ctx)
 	if !ok {
+		return Course{}, ErrUnauthorized
+	}
+
+	// Only instructors can create courses.
+	// Admins are platform managers and should not own courses directly to prevent data discrepancy.
+	isInstructor := false
+	for _, role := range principal.Roles {
+		if role == string(users.RoleInstructor) {
+			isInstructor = true
+			break
+		}
+	}
+	if !isInstructor {
 		return Course{}, ErrUnauthorized
 	}
 

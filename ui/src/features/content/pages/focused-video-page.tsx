@@ -1,18 +1,71 @@
-import { Badge, Box, Button, Flex, Heading, Text } from '@radix-ui/themes'
-import { ArrowLeft, Maximize2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Badge, Box, Button, Flex, Heading, Text, Spinner, Callout } from '@radix-ui/themes'
+import { ArrowLeft, Maximize2, AlertCircle } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { VideoRenderer } from '../components/video-renderer'
-
-// Note: In a real app, we'd fetch the content detail here via a loader.
-// For this implementation, we'll assume the URL provides context or we'd add the loader later.
+import { fetchContentItem } from '../api/content-api'
+import type { ContentItem } from '@/features/courses/model/course'
 
 export function FocusedVideoPage() {
   const navigate = useNavigate()
-  const { courseId } = useParams()
+  const { courseId, contentId } = useParams()
+  
+  const [content, setContent] = useState<ContentItem | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
 
-  // Placeholder for content fetching logic
-  const videoTitle = "Introduction to the Course"
-  const videoUrl = "https://www.youtube.com/embed/dQw4w9WgXcQ" // Example embed URL
+  useEffect(() => {
+    if (!contentId) return
+
+    let active = true
+    setLoading(true)
+
+    fetchContentItem(contentId)
+      .then((item) => {
+        if (active) {
+          setContent(item)
+          setError(null)
+        }
+      })
+      .catch((err) => {
+        if (active) setError(err instanceof Error ? err : new Error('Failed to load video'))
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [contentId])
+
+  if (loading) {
+    return (
+      <Box className="fixed inset-0 z-50 bg-[#0f0a08] text-white">
+        <Flex align="center" justify="center" className="h-full">
+          <Spinner size="3" />
+        </Flex>
+      </Box>
+    )
+  }
+
+  if (error || !content) {
+    return (
+      <Box className="fixed inset-0 z-50 bg-[#0f0a08] text-white p-6">
+        <Callout.Root color="red">
+          <Callout.Icon>
+            <AlertCircle size={16} />
+          </Callout.Icon>
+          <Callout.Text>
+            {error?.message || 'Video not found'}
+          </Callout.Text>
+        </Callout.Root>
+        <Button mt="4" onClick={() => navigate(`/courses/${courseId}`)}>
+          Go Back
+        </Button>
+      </Box>
+    )
+  }
 
   return (
     <Box className="fixed inset-0 z-50 bg-[#0f0a08] text-white">
@@ -30,7 +83,7 @@ export function FocusedVideoPage() {
             </Button>
             <Box>
               <Badge color="amber" variant="soft" className="mb-1">VIDEO LESSON</Badge>
-              <Heading size="4" className="tracking-tight">{videoTitle}</Heading>
+              <Heading size="4" className="tracking-tight">{content.title}</Heading>
             </Box>
           </Flex>
           <Button variant="soft" color="gray">
@@ -41,7 +94,7 @@ export function FocusedVideoPage() {
 
         {/* Video Player Section */}
         <Box className="relative flex-1 bg-black">
-          <VideoRenderer url={videoUrl} title={videoTitle} />
+          <VideoRenderer url={content.source_url || ''} title={content.title} />
         </Box>
 
         {/* Bottom Content / Controls */}
@@ -50,8 +103,7 @@ export function FocusedVideoPage() {
             <Box className="max-w-2xl">
               <Text color="gray" size="2" className="mb-2 block uppercase tracking-widest">Description</Text>
               <Text size="3" className="text-gray-300">
-                This lesson covers the core foundations. Take your time to understand the concepts
-                before moving to the next section.
+                {content.description || 'This lesson covers the core foundations. Take your time to understand the concepts before moving to the next section.'}
               </Text>
             </Box>
             <Flex gap="3">

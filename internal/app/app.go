@@ -16,7 +16,6 @@ import (
 	"toucan/internal/enrollments"
 	"toucan/internal/identity"
 	"toucan/internal/sections"
-	"toucan/internal/seed"
 	"toucan/internal/storage"
 	"toucan/internal/uploads"
 	"toucan/internal/users"
@@ -27,7 +26,7 @@ type App struct {
 	Close   func() error
 }
 
-func New(dbCfg database.Config, storageCfg storage.Config, seedCfg seed.Config, identityCfg identity.Config, logger *log.Logger) (*App, error) {
+func New(dbCfg database.Config, storageCfg storage.Config, identityCfg identity.Config, logger *log.Logger) (*App, error) {
 	db, err := database.Open(dbCfg.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
@@ -52,6 +51,13 @@ func New(dbCfg database.Config, storageCfg storage.Config, seedCfg seed.Config, 
 
 	userRepo := users.NewRepository(db)
 	userService := users.NewService(userRepo)
+
+	// Hook JIT provisioning into the authenticator
+	auth.SyncUser = func(ctx context.Context, principal identity.Principal) error {
+		_, err := userService.EnsureUser(ctx, principal)
+		return err
+	}
+
 	enrollmentRepo := enrollments.NewRepository(db)
 	enrollmentService := enrollments.NewService(enrollmentRepo, userService)
 	courseRepo := courses.NewRepository(db)
@@ -60,10 +66,6 @@ func New(dbCfg database.Config, storageCfg storage.Config, seedCfg seed.Config, 
 	sectionService := sections.NewService(sectionRepo, courseService)
 	contentRepo := content.NewRepository(db)
 	contentService := content.NewService(contentRepo, sectionService)
-
-	if seedCfg.DemoData {
-		seed.Demo(userService, courseService, sectionService, contentService)
-	}
 
 	return &App{
 		Handler: buildHandler(logger, courseService, enrollmentService, sectionService, contentService, userService, store, auth),

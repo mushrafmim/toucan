@@ -75,4 +75,9 @@ export type CourseSection = Section & {
 export type CourseDetail = {
   course: Course
   sections: CourseSection[]
+  enrollment?: {
+    course_id: string
+    user_id: string
+    role: 'owner' | 'manager' | 'learner'
+  } | null
 }

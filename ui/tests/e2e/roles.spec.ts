@@ -7,21 +7,21 @@ test.describe('Role Switching and Navigation', () => {
   });
 
   test('should default to Learner view and show basic nav', async ({ page }) => {
-    // Check role switcher shows Student (id: learner)
-    await expect(page.getByRole('button', { name: 'Student' })).toBeVisible();
+    // Check role switcher shows Learner (id: learner)
+    await expect(page.getByRole('button', { name: 'Learner' })).toBeVisible();
 
     const sidebar = page.getByRole('navigation', { name: /Primary/i });
     await expect(sidebar.getByRole('link', { name: /Overview/i })).toBeVisible();
     await expect(sidebar.getByRole('link', { name: /Courses/i })).toBeVisible();
     
-    // Admin/Teacher specific items should be hidden
+    // Admin/Instructor specific items should be hidden
     await expect(sidebar.getByRole('link', { name: /Curriculum/i })).not.toBeVisible();
     await expect(sidebar.getByRole('link', { name: /Users/i })).not.toBeVisible();
   });
 
   test('should switch to Instructor view and show curriculum', async ({ page }) => {
     // Open role switcher
-    await page.getByRole('button', { name: 'Student' }).click();
+    await page.getByRole('button', { name: 'Learner' }).click();
     
     // Select Instructor
     await page.getByRole('menuitem').filter({ hasText: 'Instructor' }).click();
@@ -37,7 +37,7 @@ test.describe('Role Switching and Navigation', () => {
 
   test('should switch to Administrator view and show all items', async ({ page }) => {
     // Open role switcher
-    await page.getByRole('button', { name: 'Student' }).click();
+    await page.getByRole('button', { name: 'Learner' }).click();
     
     // Select Administrator
     await page.getByRole('menuitem').filter({ hasText: 'Administrator' }).click();

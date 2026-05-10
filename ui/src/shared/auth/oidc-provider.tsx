@@ -37,6 +37,13 @@ function AccessTokenBridge() {
 function AuthGate({ children }: { children: ReactNode }) {
   const auth = useAuth()
 
+  // Synchronously update the token snapshot during render. 
+  // This ensures that when this component finally renders its children (the Router),
+  // any loaders triggered by the router will have access to the latest token immediately.
+  if (auth.isAuthenticated && auth.user) {
+    setAccessTokenSnapshot(auth.user.access_token)
+  }
+
   if (auth.activeNavigator === 'signinRedirect') {
     return <AuthShell title="Redirecting to sign in..." />
   }

@@ -7,7 +7,6 @@ import (
 
 	"toucan/internal/database"
 	"toucan/internal/identity"
-	"toucan/internal/seed"
 	"toucan/internal/storage"
 )
 
@@ -15,7 +14,6 @@ type Config struct {
 	HTTPAddr string
 	Database database.Config
 	Identity identity.Config
-	Seed     seed.Config
 	Storage  storage.Config
 }
 
@@ -37,9 +35,6 @@ func Load() Config {
 				Roles:   getEnvList("TOUCAN_DEV_USER_ROLES", []string{"admin"}),
 				Scopes:  getEnvList("TOUCAN_DEV_USER_SCOPES", []string{"dev"}),
 			},
-		},
-		Seed: seed.Config{
-			DemoData: getEnvBool("TOUCAN_SEED_DEMO_DATA", false),
 		},
 		Storage: storage.Config{
 			Driver:    strings.ToLower(getEnv("TOUCAN_BLOB_DRIVER", storage.BlobDriverLocal)),

@@ -85,7 +85,6 @@ Configuration is controlled through environment variables:
 ```sh
 TOUCAN_HTTP_ADDR=:8080
 TOUCAN_STORAGE_DRIVER=memory
-TOUCAN_SEED_DEMO_DATA=true
 ```
 
 To run against PostgreSQL:
@@ -93,7 +92,6 @@ To run against PostgreSQL:
 ```sh
 TOUCAN_STORAGE_DRIVER=postgres
 TOUCAN_POSTGRES_DSN=postgres://user:pass@localhost:5432/toucan?sslmode=disable
-TOUCAN_SEED_DEMO_DATA=true
 go run ./cmd/toucan
 ```
 

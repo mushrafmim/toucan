@@ -14,9 +14,11 @@ import { useNavigate } from 'react-router-dom'
 type CreateSectionDialogProps = {
   courseId: string
   onSuccess?: () => void
+  trigger?: React.ReactNode
+  position?: number
 }
 
-export function CreateSectionDialog({ courseId, onSuccess }: CreateSectionDialogProps) {
+export function CreateSectionDialog({ courseId, onSuccess, trigger, position }: CreateSectionDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
@@ -33,7 +35,7 @@ export function CreateSectionDialog({ courseId, onSuccess }: CreateSectionDialog
       await createSection({
         ...form,
         course_id: courseId,
-        position: 0, // Simplified for now
+        position: position ?? 0,
       })
       setOpen(false)
       setForm({ title: '', summary: '' })
@@ -53,10 +55,12 @@ export function CreateSectionDialog({ courseId, onSuccess }: CreateSectionDialog
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger>
-        <Button variant="outline" color="amber" size="2" className="cursor-pointer">
-          <Plus size={16} />
-          Add Section
-        </Button>
+        {trigger ?? (
+          <Button variant="outline" color="amber" size="2" className="cursor-pointer">
+            <Plus size={16} />
+            Add Section
+          </Button>
+        )}
       </Dialog.Trigger>
 
       <Dialog.Content maxWidth="450px">

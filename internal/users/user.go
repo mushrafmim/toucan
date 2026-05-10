@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"toucan/internal/identity"
 	"toucan/internal/shared"
 )
 
@@ -41,7 +42,9 @@ type ListResult = shared.ListResult[User]
 
 type Service interface {
 	Create(ctx context.Context, req CreateUserRequest) (User, error)
+	Update(ctx context.Context, u User) (User, error)
 	Get(ctx context.Context, id string) (User, error)
 	GetByExternalSubject(ctx context.Context, subject string) (User, error)
 	List(ctx context.Context, filter ListFilter) (ListResult, error)
+	EnsureUser(ctx context.Context, principal identity.Principal) (User, error)
 }

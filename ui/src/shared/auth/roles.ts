@@ -1,9 +1,9 @@
 import { BookOpen, GraduationCap, ShieldCheck } from 'lucide-react'
 
-export type UserRole = 'admin' | 'teacher' | 'student'
+export type UserRole = 'admin' | 'instructor' | 'learner'
 
 export const TOUCAN_ROLE_HEADER = 'X-Toucan-Role'
-export const DEFAULT_ACTIVE_ROLE: UserRole = 'student'
+export const DEFAULT_ACTIVE_ROLE: UserRole = 'learner'
 
 export type RoleDefinition = {
   id: UserRole
@@ -19,15 +19,15 @@ export const ROLES: Record<UserRole, RoleDefinition> = {
     description: 'Manage platform, tenants, and system-wide settings.',
     icon: ShieldCheck,
   },
-  teacher: {
-    id: 'teacher',
+  instructor: {
+    id: 'instructor',
     label: 'Instructor',
     description: 'Design curriculum, manage content, and track student progress.',
     icon: GraduationCap,
   },
-  student: {
-    id: 'student',
-    label: 'Student',
+  learner: {
+    id: 'learner',
+    label: 'Learner',
     description: 'Access learning materials, complete lessons, and view progress.',
     icon: BookOpen,
   },
@@ -36,12 +36,15 @@ export const ROLES: Record<UserRole, RoleDefinition> = {
 const ACTIVE_ROLE_STORAGE_KEY = 'toucan.activeRole'
 
 export function isUserRole(value: string): value is UserRole {
-  return value === 'admin' || value === 'teacher' || value === 'student'
+  return value === 'admin' || value === 'instructor' || value === 'learner'
 }
 
 export function normalizeRole(value: string | null): UserRole | null {
-  if (value === 'learner') {
-    return 'student'
+  if (value === 'teacher' || value === 'instructor') {
+    return 'instructor'
+  }
+  if (value === 'student' || value === 'learner') {
+    return 'learner'
   }
   if (value && isUserRole(value)) {
     return value

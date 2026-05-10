@@ -13,7 +13,7 @@ import (
 func main() {
 	logger := log.New(os.Stdout, "toucan ", log.LstdFlags)
 	cfg := config.Load()
-	application, err := app.New(cfg.Database, cfg.Storage, cfg.Seed, cfg.Identity, logger)
+	application, err := app.New(cfg.Database, cfg.Storage, cfg.Identity, logger)
 	if err != nil {
 		logger.Fatalf("bootstrap application: %v", err)
 	}

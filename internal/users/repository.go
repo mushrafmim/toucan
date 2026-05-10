@@ -144,3 +144,31 @@ func (r *Repository) List(ctx context.Context, filter ListFilter) (ListResult, e
 		Total:    total,
 	}, nil
 }
+
+func (r *Repository) Update(ctx context.Context, u User) (User, error) {
+	u.UpdatedAt = time.Now().UTC()
+	rolesJSON, err := json.Marshal(u.Roles)
+	if err != nil {
+		return User{}, fmt.Errorf("marshal roles: %w", err)
+	}
+
+	query := `
+		UPDATE users
+		SET email = $2, display_name = $3, roles = $4, updated_at = $5
+		WHERE id = $1
+	`
+	result, err := r.db.ExecContext(ctx, query, u.ID, u.Email, u.DisplayName, rolesJSON, u.UpdatedAt)
+	if err != nil {
+		return User{}, fmt.Errorf("postgres update user: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return User{}, err
+	}
+	if rows == 0 {
+		return User{}, ErrNotFound
+	}
+
+	return u, nil
+}

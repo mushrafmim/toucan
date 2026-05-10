@@ -12,7 +12,7 @@ type Role string
 const (
 	RoleOwner   Role = "owner"
 	RoleManager Role = "manager"
-	RoleStudent Role = "student"
+	RoleLearner Role = "learner"
 )
 
 type Enrollment struct {

@@ -3,6 +3,7 @@
 # Variables
 BINARY_NAME=toucan
 DOCKER_IMAGE=toucan
+TAG?=latest
 GO_CMD=go
 PNPM_CMD=pnpm
 UI_DIR=ui
@@ -59,7 +60,7 @@ build-frontend:
 .PHONY: run-backend
 run-backend:
 	@echo "Running backend..."
-	TOUCAN_SEED_DEMO_DATA=true $(GO_CMD) run cmd/toucan/main.go
+	$(GO_CMD) run cmd/toucan/main.go
 
 .PHONY: run-frontend
 run-frontend:
@@ -119,10 +120,10 @@ clean:
 # Docker build targets
 .PHONY: docker-build
 docker-build:
-	@echo "Building production Docker image..."
-	docker build --build-arg HEADLESS=false -t $(DOCKER_IMAGE) .
+	@echo "Building production Docker image (tag: $(TAG))..."
+	docker build --build-arg HEADLESS=false -t $(DOCKER_IMAGE):$(TAG) .
 
 .PHONY: docker-headless
 docker-headless:
-	@echo "Building headless Docker image..."
-	docker build --build-arg HEADLESS=true -t $(DOCKER_IMAGE):headless .
+	@echo "Building headless Docker image (tag: $(TAG)-headless)..."
+	docker build --build-arg HEADLESS=true -t $(DOCKER_IMAGE):$(TAG)-headless .
